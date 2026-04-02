@@ -24,20 +24,37 @@ python start_platform.py
 * **Dashboard Access:** Open your browser to `http://localhost:3000`.
 * **The Manager Chat:** Use the chat box to assign multi-step goals directly to the CEO Manager Agent.
 
-### ⌨️ CLI Operation Modes
-If you prefer running the engine strictly from the terminal:
-- **Single-Task Mode:** pass a prompt straight via arguments.
-  ```bash
-  python main.py "Create a math library, write tests, and open a PR on GitHub"
-  ```
-- **Real-Time Observability Terminal:** Launch with `--dashboard` for an interactive CLI dashboard tracking DAG states and active matrix rooms.
-  ```bash
-  python main.py "Your task description" --dashboard
-  ```
-- **Interactive REPL Mode:**
-  ```bash
-  python main.py --interactive
-  ```
+### ⌨️ CLI / Terminal Usage (No UI Required)
+The platform is fully accessible from the terminal — no browser needed. The `cli.py` tool wraps the entire backend API into clean commands:
+
+```bash
+# Start the backend first (required)
+python -m uvicorn server.app:app --reload
+
+# Run a full agentic audit on a GitHub repo — streams live convergence metrics
+python cli.py run --repo "https://github.com/pallets/flask" --task "Write QA tests for app.py"
+
+# Point to a local repo instead
+python cli.py run --workspace "C:/myproject" --task "Analyze auth.py and fix failing tests"
+
+# List all your projects
+python cli.py projects list
+
+# Check live convergence status of a running task
+python cli.py status <project-id>
+```
+
+**Example terminal output while a task runs:**
+```
+│  State: RUNNING       Coverage: 42.1%   Iterations: 2   Self-heals: 1
+│  State: RUNNING       Coverage: 68.3%   Iterations: 3   Self-heals: 2
+│  State: CONVERGED     Coverage: 74.5%   Iterations: 4   Self-heals: 2
+│
+│  ✅  CONVERGED — All tests passed & coverage met.
+│  📋  Dashboard: http://localhost:3000
+│  🔍  Project ID: ce026a77
+```
+
 
 ---
 
