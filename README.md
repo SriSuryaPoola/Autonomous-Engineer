@@ -86,6 +86,20 @@ graph TD
 
 ---
 
+## 📜 Project Evolution (Phases 1 to 3)
+
+Before reaching the Phase 4 Testing Engine, the platform evolved through several foundational milestones:
+
+* **Phases 1 & 2 (The Core Engine):** Established the **HiClaw Coordinator** for inter-agent communication, implemented the **Claude Flow 6-step cognitive loop** (Understand → Decompose → Propose → Execute → Validate → Refine), and integrated foundational native Python filesystem and CLI tools.
+* **Phase 3 (CI/CD & Open Source Integration):**
+  * **GitHub Integration:** Native support for triggering GitHub Actions and opening Pull Requests via the `gh` CLI.
+  * **CI/CD Self-Healing Loop:** The Manager Agent autonomously detects CI pipeline failures post-deployment and enqueues high-priority debugging tasks.
+  * **Real-Time Terminal Dashboard:** Live interactive execution trace of all agents, DAG states, and exact failure metrics.
+  * **Fuzzy Path Matching:** Intelligent file resolution (using `difflib`) to gracefully handle human typos during test QA targeting.
+  * **13-Field Protocol:** Strict structural adherence to the HiClaw communication standard for robust message state tracking across Matrix rooms.
+
+---
+
 ## ✨ Phase 4: Agentic Testing Engine
 
 The hallmark of the Phase 4 Engine is its ability to test itself natively without hallucinations:
