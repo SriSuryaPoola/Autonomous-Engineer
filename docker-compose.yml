@@ -1,32 +1,48 @@
 services:
+  # ─── Backend (FastAPI) ──────────────────────────────────────────────────────
   backend:
     build: .
     container_name: ae-backend
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:8000"
     volumes:
-      - ./memory:/app/memory        # Persist project memory
-      - ./Report:/app/Report        # Persist test reports
+      - ./memory:/app/memory          # Persist project memory
+      - ./Report:/app/Report          # Persist test reports
+      - ./.chroma:/app/.chroma        # Persist vector index (ChromaDB)
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-auto}
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TOKEN_BUDGET_PER_TASK=${TOKEN_BUDGET_PER_TASK:-50000}
+      - HITL_CONFIDENCE_THRESHOLD=${HITL_CONFIDENCE_THRESHOLD:-85}
+      - STATIC_ANALYSIS_ENABLED=${STATIC_ANALYSIS_ENABLED:-true}
+      - DOCKER_SANDBOX_ENABLED=${DOCKER_SANDBOX_ENABLED:-false}
+      - VECTOR_MEMORY_ENABLED=${VECTOR_MEMORY_ENABLED:-false}
+      - AUTO_GIT_COMMIT=${AUTO_GIT_COMMIT:-false}
+    depends_on:
+      - ollama
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
+      interval: 20s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 15s
 
+  # ─── Frontend (Static UI) ───────────────────────────────────────────────────
   frontend:
     image: python:3.11-slim
     container_name: ae-frontend
     working_dir: /app/ui
-    command: python -m http.server 3000
+    command: >
+      sh -c "echo '✅ Autonomous Engineer UI ready at http://localhost:${FRONTEND_PORT:-3000}' &&
+             python -m http.server ${FRONTEND_PORT:-3000}"
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     volumes:
       - ./ui:/app/ui:ro
     restart: unless-stopped
@@ -34,5 +50,44 @@ services:
       backend:
         condition: service_healthy
 
+  # ─── Ollama (Local LLM — free option) ──────────────────────────────────────
+  # Profile: only started when --profile ollama is passed
+  # Usage: docker compose --profile ollama up
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ae-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    profiles:
+      - ollama
+      - full
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
 volumes:
-  memory_data:
+  ollama_models:
+    driver: local
+
+# ─── Usage Guide ────────────────────────────────────────────────────────────
+#
+# Default (Claude/OpenAI):
+#   docker compose up --build
+#
+# With Ollama (free local LLM):
+#   docker compose --profile ollama up --build
+#
+# Full stack:
+#   docker compose --profile full up --build
+#
+# Check status:
+#   docker compose ps
+#
+# View logs:
+#   docker compose logs -f backend

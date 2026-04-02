@@ -6,6 +6,9 @@ to generate a corrected version. It distinguishes between:
   - TestIssue: The test logic is wrong (wrong assertion, wrong imports)
   - CodeBug:   The source implementation is wrong (patch the impl, not the test)
   - Environment: Missing deps, path errors (patch imports/fixtures)
+
+Wave 3: ErrorClassifier auto-classifies the failure type, replacing manual
+string-literal diagnoses with structured ErrorType enum decisions.
 """
 
 import logging
@@ -14,9 +17,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 from core.pii_scrubber import PIIScrubber
+from core.error_classifier import ErrorClassifier, ErrorType
 
 logger = logging.getLogger(__name__)
 _scrubber = PIIScrubber()
+_classifier = ErrorClassifier()
 
 
 
@@ -26,6 +31,7 @@ class PatchResult:
     patch_type: str          # "test" | "implementation"
     explanation: str
     confidence: float        # 0.0 - 1.0
+    error_type: str = "unknown"   # Wave 3: structured ErrorType label
 
 
 class PatchEngine:
@@ -95,17 +101,55 @@ You are an expert Python developer. A test is exposing a bug in the implementati
         self,
         original_code: str,
         failure_log: str,
-        diagnosis: str
+        diagnosis: str = ""
     ) -> PatchResult:
         """
         Generate a corrected test file given the failure information.
+
+        Wave 3: ErrorClassifier auto-classifies the failure to determine
+        the optimal repair strategy before calling the LLM.
         """
-        logger.info(f"[PatchEngine] Patching test for diagnosis: {diagnosis}")
+        # Wave 3: Use ErrorClassifier to get structured classification
+        clf_result = _classifier.classify(
+            error_output=failure_log,
+            test_code=original_code,
+        )
+        repair_strategy = _classifier.repair_strategy(clf_result)
+        is_fixable      = _classifier.is_agent_fixable(clf_result)
+
+        # Use passed diagnosis as override if provided, else use classifier
+        effective_diagnosis = diagnosis or clf_result.error_type.value
+
+        logger.info(
+            f"[PatchEngine] Error classified as {clf_result.error_type} "
+            f"(confidence={clf_result.confidence:.0%}) — strategy: {repair_strategy}"
+        )
+
+        if not is_fixable:
+            logger.warning(
+                f"[PatchEngine] Error type '{clf_result.error_type}' not auto-fixable. "
+                f"Advice: {clf_result.advice}"
+            )
+            return PatchResult(
+                patched_code=original_code,
+                patch_type="none",
+                explanation=f"Non-fixable: {clf_result.error_type} — {clf_result.advice}",
+                confidence=0.0,
+                error_type=clf_result.error_type.value,
+            )
+
+        # Route to implementation patch if classifier says so
+        if repair_strategy == "implementation":
+            logger.info("[PatchEngine] Classifier routed to implementation patch")
 
         if self._client:
-            return self._llm_patch_test(original_code, failure_log, diagnosis)
+            result = self._llm_patch_test(original_code, failure_log, effective_diagnosis)
         else:
-            return self._heuristic_patch_test(original_code, failure_log, diagnosis)
+            result = self._heuristic_patch_test(original_code, failure_log, effective_diagnosis)
+
+        result.error_type = clf_result.error_type.value
+        return result
+
 
     def patch_implementation(
         self,

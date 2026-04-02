@@ -4,6 +4,9 @@ Agent Memory / Context Store.
 Provides per-agent memory and global project memory:
   - AgentMemory: per-agent scratchpad, decisions, intermediate outputs.
   - ProjectMemory: persistent global state stored in memory/
+
+Wave 3: AgentMemory now has optional VectorMemory long-term store.
+When VECTOR_MEMORY_ENABLED=true, semantic search uses ChromaDB.
 """
 
 from __future__ import annotations
@@ -81,6 +84,7 @@ class AgentMemory:
         return None
 
     def search(self, keyword: str) -> list[MemoryEntry]:
+        """Search all memory stores by keyword."""
         keyword_lower = keyword.lower()
         results: list[MemoryEntry] = []
         for store in (self._context, self._decisions, self._outputs, self._errors):
@@ -88,7 +92,27 @@ class AgentMemory:
                 content_str = str(entry.content).lower()
                 if keyword_lower in content_str or any(keyword_lower in t.lower() for t in entry.tags):
                     results.append(entry)
+
+        # Wave 3: Also query VectorMemory if available
+        if hasattr(self, "_vector_memory") and self._vector_memory:
+            try:
+                vm_results = self._vector_memory.search(keyword, top_k=3)
+                for vr in vm_results:
+                    results.append(MemoryEntry(
+                        timestamp=datetime.now(),
+                        category="vector",
+                        content={"file": vr.file_path, "snippet": vr.snippet,
+                                 "score": vr.relevance_score},
+                        tags=["vector_memory"],
+                    ))
+            except Exception:
+                pass
+
         return results
+
+    def attach_vector_memory(self, vm: Any) -> None:
+        """Wave 3: Attach VectorMemory for long-term semantic retrieval."""
+        self._vector_memory = vm
 
     def clear(self) -> None:
         self._context.clear()

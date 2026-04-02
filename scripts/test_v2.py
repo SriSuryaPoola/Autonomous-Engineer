@@ -269,6 +269,94 @@ try:
     chk('Benchmark fallback data', 'psf/requests' in js)
 except: chk('main.js readable', False)
 
+# ─── WAVE 3: Claude Flow Integration ─────────────────────────────────────────
+section("WAVE 3 — CLAUDE_FLOW INTEGRATION")
+try:
+    cf = rd(os.path.join(ROOT, 'core', 'claude_flow.py'))
+    chk('Reflector imported in claude_flow', 'from core.reflector import Reflector' in cf)
+    chk('CostEstimator imported in claude_flow', 'from core.cost_estimator import CostEstimator' in cf)
+    chk('ErrorClassifier imported in claude_flow', 'from core.error_classifier import ErrorClassifier' in cf)
+    chk('PerformanceProfiler imported in claude_flow', 'from core.performance_profiler import PerformanceProfiler' in cf)
+    chk('GitAgent imported in claude_flow', 'from core.git_agent import GitAgent' in cf)
+    chk('VectorMemory optional import in claude_flow', 'from core.vector_memory import VectorMemory' in cf)
+    chk('_reflector in ClaudeFlow.__init__', 'self._reflector' in cf)
+    chk('_cost_est in ClaudeFlow.__init__', 'self._cost_est' in cf)
+    chk('_profiler in ClaudeFlow.__init__', 'self._profiler' in cf)
+    chk('_git_agent in ClaudeFlow.__init__', 'self._git_agent' in cf)
+    chk('Reflector.evaluate called per phase', 'reflection = self._reflector.evaluate' in cf)
+    chk('Cost estimate injected before loop', 'cost_estimate = self._cost_est.estimate' in cf)
+    chk('VectorMemory injected into understand', "phase_name == \"understand\" and self._vector_memory" in cf)
+    chk('Profiler wraps each phase', 'with self._profiler.step' in cf)
+    chk('ErrorClassifier applied to issues', 'self._error_clf.classify' in cf)
+    chk('GitAgent auto-commit on convergence', 'git_agent.commit_convergence' in cf)
+    chk('Performance report in result dict', '"performance": perf_report' in cf)
+    chk('estimated_cost_usd in result dict', '"estimated_cost_usd": cost_estimate.estimated_cost_usd' in cf)
+except: chk('claude_flow.py readable', False)
+
+# ─── WAVE 3: PatchEngine Integration ─────────────────────────────────────────
+section("WAVE 3 — PATCH_ENGINE INTEGRATION")
+try:
+    pe = rd(os.path.join(ROOT, 'core', 'patch_engine.py'))
+    chk('ErrorClassifier imported in patch_engine', 'from core.error_classifier import ErrorClassifier' in pe)
+    chk('_classifier = ErrorClassifier()', '_classifier = ErrorClassifier()' in pe)
+    chk('auto-classify in patch_test()', 'clf_result = _classifier.classify' in pe)
+    chk('repair_strategy used', '_classifier.repair_strategy' in pe)
+    chk('is_agent_fixable routing', '_classifier.is_agent_fixable' in pe)
+    chk('error_type on PatchResult', 'error_type: str' in pe)
+    chk('sets result.error_type', 'result.error_type = clf_result.error_type.value' in pe)
+    chk('non-fixable early return', 'Non-fixable:' in pe)
+    # Live test
+    from core.patch_engine import PatchEngine
+    eng = PatchEngine(claude_client=None)
+    pr = eng.patch_test(
+        original_code='import json_bad\ndef test_x(): pass',
+        failure_log="ModuleNotFoundError: No module named 'json_bad'",
+    )
+    chk('PatchEngine produces PatchResult', hasattr(pr, 'patched_code'))
+    chk('PatchResult has error_type field', pr.error_type != '')
+    chk('ENV_ERROR auto-detected in patch', 'ENV_ERROR' in pr.error_type.upper() or 'env' in pr.error_type.lower(), pr.error_type)
+except Exception as e:
+    chk('PatchEngine integration', False, str(e)[:120])
+
+# ─── WAVE 3: Memory Integration ───────────────────────────────────────────────
+section("WAVE 3 — MEMORY INTEGRATION")
+try:
+    mem_src = rd(os.path.join(ROOT, 'core', 'memory.py'))
+    chk('AgentMemory.search has VectorMemory branch', 'Wave 3: Also query VectorMemory' in mem_src)
+    chk('attach_vector_memory() method added', 'def attach_vector_memory' in mem_src)
+    chk('_vector_memory attribute set', 'self._vector_memory = vm' in mem_src)
+    from core.memory import AgentMemory
+    am = AgentMemory('test_wave3')
+    am.add_context('error classification module', tags=['core'])
+    results = am.search('error')
+    chk('AgentMemory.search still works', any('error' in str(r.content).lower() for r in results))
+    am.attach_vector_memory(None)  # Attach None (disabled) — should not crash
+    chk('attach_vector_memory(None) safe', True)
+except Exception as e:
+    chk('Memory integration', False, str(e)[:120])
+
+# ─── WAVE 4 (Extended): docker-compose.yml ───────────────────────────────────
+section("WAVE 4 — DOCKER-COMPOSE.YML (EXTENDED)")
+try:
+    dc = rd(os.path.join(ROOT, 'docker-compose.yml'))
+    chk('docker-compose has backend service', 'ae-backend' in dc)
+    chk('docker-compose has frontend service', 'ae-frontend' in dc)
+    chk('docker-compose has ollama service', 'ae-ollama' in dc or 'ollama/ollama' in dc)
+    chk('Ollama behind a profile', 'profiles:' in dc)
+    chk('ollama profile named', 'ollama' in dc)
+    chk('backend healthcheck present', 'healthcheck' in dc)
+    chk('start_period in healthcheck', 'start_period' in dc)
+    chk('frontend depends_on backend', 'service_healthy' in dc)
+    chk('ChromaDB volume mounted', '.chroma' in dc)
+    chk('VECTOR_MEMORY_ENABLED env in compose', 'VECTOR_MEMORY_ENABLED' in dc)
+    chk('AUTO_GIT_COMMIT env in compose', 'AUTO_GIT_COMMIT' in dc)
+    chk('HITL_CONFIDENCE_THRESHOLD env in compose', 'HITL_CONFIDENCE_THRESHOLD' in dc)
+    chk('OLLAMA_HOST configured', 'OLLAMA_HOST' in dc)
+    chk('DOCKER_SANDBOX_ENABLED in compose', 'DOCKER_SANDBOX_ENABLED' in dc)
+    chk('PORT configurable', '${PORT' in dc or '${PORT:-' in dc)
+    chk('ollama_models volume defined', 'ollama_models' in dc)
+except: chk('docker-compose.yml readable', False)
+
 # ─── INTEGRATION CHECKS ───────────────────────────────────────────────────────
 section("INTEGRATION CHECKS")
 try:

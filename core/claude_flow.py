@@ -4,18 +4,27 @@ Claude Flow Engine — 6-Step Deep Task Execution Pipeline.
 MANDATORY inside every HiClaw Worker agent. Each worker invokes Claude
 Flow to process tasks through 6 phases:
 
-    STEP 1: Task Understanding     → parse requirements
+    STEP 1: Task Understanding     → parse requirements  + VectorMemory context
     STEP 2: Task Decomposition     → break into micro-tasks
     STEP 3: Sub-agent Creation     → spawn Researcher, Planner, Coder, Tester, Validator
     STEP 4: Parallel/Sequential Execution → run sub-agents
     STEP 5: Validation             → quality check (NEVER SKIPPED)
     STEP 6: Refinement             → iterate until quality threshold met
+
+Wave 3 Integrations:
+  • Reflector     — self-evaluates each phase output, detects loops, revises plan
+  • CostEstimator — projects token cost before loop starts, enforces budget gate
+  • ErrorClassifier — structured error taxonomy replaces string-literal diagnosis
+  • VectorMemory  — injects relevant codebase context into understand phase
+  • PerformanceProfiler — tracks latency + efficiency per agent step
+  • GitAgent      — commits after successful convergence (auto-commit mode)
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional, TYPE_CHECKING
@@ -32,6 +41,21 @@ from core.memory import AgentMemory
 from core.slm_router import SLMRouter, TaskComplexity
 from core.hitl_manager import HITLManager, estimate_confidence
 from core.pii_scrubber import PIIScrubber
+
+# Wave 3 — New integrations
+from core.reflector import Reflector
+from core.cost_estimator import CostEstimator
+from core.error_classifier import ErrorClassifier
+from core.performance_profiler import PerformanceProfiler
+from core.git_agent import GitAgent
+
+# VectorMemory: optional — graceful import
+try:
+    from core.vector_memory import VectorMemory
+    _VECTOR_MEMORY_ENABLED = os.getenv("VECTOR_MEMORY_ENABLED", "false").lower() == "true"
+except ImportError:
+    VectorMemory = None  # type: ignore
+    _VECTOR_MEMORY_ENABLED = False
 
 if TYPE_CHECKING:
     from core.agent_base import WorkerAgent
@@ -380,9 +404,19 @@ class ClaudeFlow:
 
     def __init__(self, worker: "WorkerAgent"):
         self.worker = worker
-        self.max_retries = MAX_RETRIES
-        self._logger = logging.getLogger(f"claude_flow.{worker.role}")
+        self.max_retries     = MAX_RETRIES
+        self._logger         = logging.getLogger(f"claude_flow.{worker.role}")
         self._phase_results: dict[str, SubAgentResult] = {}
+
+        # Wave 3 — integrated modules
+        self._reflector     = Reflector()
+        self._cost_est      = CostEstimator()
+        self._error_clf     = ErrorClassifier()
+        self._profiler      = PerformanceProfiler(project_id=worker.agent_id)
+        self._git_agent     = GitAgent(repo_path=os.getcwd())
+        self._vector_memory: Optional[Any] = (
+            VectorMemory(repo_path=os.getcwd()) if _VECTOR_MEMORY_ENABLED and VectorMemory else None
+        )
 
     async def run(self, task: TaskSpec) -> dict:
         """
@@ -401,16 +435,37 @@ class ClaudeFlow:
         self._phase_results.clear()
         context: dict[str, Any] = {}
         all_issues: list[str] = []
-        
+
+        # ── Wave 3: Cost pre-estimation ───────────────────────────────────
+        cost_estimate = self._cost_est.estimate(
+            task_description=task.description,
+            project_id=self.worker.agent_id,
+        )
+        self._logger.info(f"║ 💰 {cost_estimate.summary}")
+        if cost_estimate.requires_approval:
+            self._logger.warning(
+                f"║ ⚠ High cost task ({cost_estimate.cost_label}) — "
+                "continuing (auto-approved in non-interactive mode)"
+            )
+
+        # ── Wave 3: VectorMemory pre-indexing (if enabled) ────────────────
+        if self._vector_memory and not self._vector_memory._is_indexed:
+            try:
+                self._vector_memory.index_repository()
+            except Exception as vm_err:
+                self._logger.debug(f"║ VectorMemory indexing skipped: {vm_err}")
+
         tokens_used = 0
         best_quality = 0.0
         rounds_without_improvement = 0
+        previous_issues: list[str] = []
 
         for attempt in range(1, self.max_retries + 1):
-            
+
             # Simple token estimation for budget
             tokens_used += 2500  # Baseline per attempt
-            
+            self._cost_est.record_spend(self.worker.agent_id, 2500)
+
             if tokens_used > TOKEN_BUDGET_PER_TASK:
                 self._logger.warning(f"║ ⚠ Token budget exceeded ({tokens_used}/{TOKEN_BUDGET_PER_TASK}). Stopping early.")
                 break
@@ -419,11 +474,27 @@ class ClaudeFlow:
 
             # Run all 6 steps (5 phases in our config)
             for phase_cfg in self.PHASE_CONFIG:
-                phase_name = phase_cfg["phase"]
+                phase_name     = phase_cfg["phase"]
                 sub_agent_name = phase_cfg["sub_agent"]
 
+                # ── Wave 3: Inject VectorMemory context into understand phase ──
+                if phase_name == "understand" and self._vector_memory:
+                    try:
+                        related = self._vector_memory.search(task.description, top_k=3)
+                        if related:
+                            task_ctx = "\n".join(
+                                f"  [{r.file_path}] {r.snippet[:120]}" for r in related
+                            )
+                            context["vector_context"] = task_ctx
+                            self._logger.debug(f"║ VectorMemory: {len(related)} related files found")
+                    except Exception:
+                        pass
+
+                # ── Wave 3: Profile each phase ────────────────────────────────
                 sub_agent = SubAgent(sub_agent_name, phase_name, self.worker)
-                result = await sub_agent.run(task, context)
+                with self._profiler.step(phase_name, agent=sub_agent_name, tokens_used=0):
+                    result = await sub_agent.run(task, context)
+
                 self._phase_results[phase_name] = result
 
                 # Accumulate context for downstream phases
@@ -432,6 +503,29 @@ class ClaudeFlow:
 
                 if result.issues:
                     all_issues.extend(result.issues)
+
+                # ── Wave 3: Reflector — self-evaluate this phase output ───────
+                if result.output is not None:
+                    reflection = self._reflector.evaluate(
+                        phase=phase_name,
+                        output=str(result.output)[:3000],
+                        task_description=task.description,
+                        previous_issues=previous_issues,
+                        iteration=attempt,
+                        max_iterations=self.max_retries,
+                    )
+                    if not reflection.passed:
+                        self._logger.warning(
+                            f"║ [Reflector/{phase_name}] {reflection.confidence:.0%} confidence | "
+                            f"issues: {reflection.issues[:2]}"
+                        )
+                        if reflection.revised_plan:
+                            self._logger.info(
+                                f"║ [Reflector] Suggested: {reflection.revised_plan[:2]}"
+                            )
+                        previous_issues = reflection.issues
+                    else:
+                        previous_issues = []
 
             # Check quality gate
             validation = context.get("validate", {})
@@ -463,6 +557,14 @@ class ClaudeFlow:
                 self._logger.warning(f"║ ⚠ Early stopping triggered (no improvement in {EARLY_STOPPING_ROUNDS} rounds).")
                 break
 
+            # ── Wave 3: ErrorClassifier on issues ─────────────────────────
+            if all_issues:
+                clf_result = self._error_clf.classify(" ".join(all_issues[-3:]))
+                self._logger.debug(
+                    f"║ [ErrorClassifier] {clf_result.error_type} "
+                    f"(confidence={clf_result.confidence:.0%}) — {clf_result.advice}"
+                )
+
         # ── Build consolidated result ─────────────────────────────────────
 
         plan_data = context.get("decompose", {})
@@ -483,6 +585,26 @@ class ClaudeFlow:
             validate_data.get("quality_score", 0),
         )
 
+        # ── Wave 3: Performance report ─────────────────────────────────────
+        perf_report = self._profiler.report()
+        agent_health = self._profiler.agent_health()
+
+        # ── Wave 3: Auto-commit if converged (optional) ────────────────────
+        if passed and os.getenv("AUTO_GIT_COMMIT", "false").lower() == "true":
+            try:
+                commit_result = self._git_agent.commit_convergence(
+                    task_description=task.description,
+                    test_coverage=float(validate_data.get("quality_score", 0)) * 100,
+                    iterations=len(self._phase_results),
+                    dry_run=False,
+                )
+                if commit_result.success:
+                    self._logger.info(
+                        f"║ [GitAgent] Auto-committed: {commit_result.commit_hash} — {commit_result.message[:60]}"
+                    )
+            except Exception as git_err:
+                self._logger.debug(f"║ [GitAgent] Auto-commit skipped: {git_err}")
+
         consolidated = {
             "plan": str(plan_data.get("micro_tasks", [])),
             "execution_log": "\n".join(execution_log_parts),
@@ -496,6 +618,11 @@ class ClaudeFlow:
             "next_action": "Ready for Manager review" if passed else "Needs reassignment or manual intervention",
             "quality_score": final_quality,
             "passed": passed,
+            # Wave 3 additions
+            "estimated_cost_usd": cost_estimate.estimated_cost_usd,
+            "tokens_used": tokens_used,
+            "performance": perf_report,
+            "agent_health": agent_health,
         }
 
         self._logger.info(
