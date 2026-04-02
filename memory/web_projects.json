@@ -1,0 +1,66 @@
+[
+  {
+    "id": "ef82ab32",
+    "name": "PSF Requests Analysis",
+    "description": "Testing the psf/requests library with AI-driven QA",
+    "repository_url": "https://github.com/psf/requests",
+    "created_at": "2026-03-31T18:35:57.789811",
+    "memory_path": "memory/projects/ef82ab32"
+  },
+  {
+    "id": "1ac92dea",
+    "name": "Requests Stress Test",
+    "description": "Secondary isolation test project",
+    "repository_url": "https://github.com/psf/requests",
+    "created_at": "2026-03-31T18:37:00.206586",
+    "memory_path": "memory/projects/1ac92dea"
+  },
+  {
+    "id": "d5ca707f",
+    "name": "Isolation Test",
+    "description": "Testing project isolation",
+    "repository_url": "https://github.com/test/isolation",
+    "created_at": "2026-03-31T21:29:48.816557",
+    "memory_path": "memory/projects/d5ca707f"
+  },
+  {
+    "id": "7884ce44",
+    "name": "Isolation Test",
+    "description": "Testing project isolation",
+    "repository_url": "https://github.com/test/isolation",
+    "created_at": "2026-03-31T21:29:48.871500",
+    "memory_path": "memory/projects/7884ce44"
+  },
+  {
+    "id": "ce026a77",
+    "name": "Flask Stress Test",
+    "description": "QA auditing pallets/flask",
+    "repository_url": "https://github.com/pallets/flask",
+    "created_at": "2026-03-31T22:05:44.122820",
+    "memory_path": "memory/projects/ce026a77"
+  },
+  {
+    "id": "ae67f369",
+    "name": "Flask Stress Test",
+    "description": "QA auditing pallets/flask",
+    "repository_url": "https://github.com/pallets/flask",
+    "created_at": "2026-03-31T22:14:54.408448",
+    "memory_path": "memory/projects/ae67f369"
+  },
+  {
+    "id": "2d348ed7",
+    "name": "Django E2E Audit",
+    "description": "Phase 8 Django tests",
+    "repository_url": "https://github.com/django/django",
+    "created_at": "2026-03-31T22:21:20.051515",
+    "memory_path": "memory/projects/2d348ed7"
+  },
+  {
+    "id": "87ab4b4e",
+    "name": "Django Live Run",
+    "description": "Final E2E",
+    "repository_url": "https://github.com/django/django",
+    "created_at": "2026-03-31T22:25:13.919059",
+    "memory_path": "memory/projects/87ab4b4e"
+  }
+]

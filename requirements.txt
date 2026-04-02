@@ -1,0 +1,18 @@
+# Autonomous AI Engineering Team — Dependencies
+# Core system uses only Python standard library (asyncio, dataclasses, etc.)
+# Below are optional dependencies for testing and development
+
+# Testing
+pytest>=7.0
+pytest-asyncio>=0.21
+
+# Phase 4 — Platform Backend
+fastapi>=0.95.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
+
+# Phase 5 — Agentic Testing Engine
+pytest-cov>=4.1.0       # Coverage measurement
+coverage>=7.3.0          # Coverage data parsing
+aiofiles>=23.0.0         # Async file I/O for sandbox
+anthropic>=0.25.0        # Claude API client

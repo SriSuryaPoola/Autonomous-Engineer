@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Autonomous Engineer | Advanced Engineering Platform</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="dark-mode">
+    <div id="app">
+        <!-- Sidebar: Project Management -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">AI Autonomous Engineer <span>PRO</span></div>
+                <button id="new-project-btn">+ New Project</button>
+            </div>
+            <nav id="project-list">
+                <!-- Projects injected here -->
+            </nav>
+            <div class="sidebar-footer">
+                <button id="settings-btn">⚙ Settings</button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main id="workspace">
+            <header id="top-bar">
+                <div class="project-info">
+                    <h1 id="current-project-name">Select a Project</h1>
+                    <p id="current-project-desc">Get started by creating or choosing a workspace.</p>
+                </div>
+                <div class="view-tabs">
+                    <button class="tab-btn active" data-tab="chat">Chat</button>
+                    <button class="tab-btn" data-tab="dashboard">Dashboard</button>
+                    <button class="tab-btn" data-tab="reports">Reports</button>
+                    <button class="tab-btn" data-tab="memory">Memory</button>
+                </div>
+                <div class="platform-badge">AI Autonomous Engineer</div>
+            </header>
+
+            <section id="content-area">
+                <!-- Chat View -->
+                <div id="chat-view" class="tab-content active">
+                    <div id="chat-messages">
+                        <div class="message system">Welcome! Use the input below to assign a task to your Engineers.</div>
+                    </div>
+                    <div class="input-wrapper">
+                        <textarea id="task-input" placeholder="Type a task (e.g., 'Build a REST API for a blog')..."></textarea>
+                        <button id="send-task-btn">Execute</button>
+                    </div>
+                    <div class="sample-prompts">
+                        <span class="prompt-tag">Build REST API</span>
+                        <span class="prompt-tag">Create Playwright tests</span>
+                        <span class="prompt-tag">Fix failing CI</span>
+                    </div>
+                </div>
+
+                <!-- Project Creation Modal -->
+                <div id="project-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <h3>Create New Project</h3>
+                        <div class="field">
+                            <label>Project Name</label>
+                            <input type="text" id="new-project-name" placeholder="e.g. My Awesome App">
+                        </div>
+                        <div class="field">
+                            <label>Description</label>
+                            <textarea id="new-project-desc" placeholder="What does this project do?"></textarea>
+                        </div>
+                        <div class="field">
+                            <label>Repository URL (Optional)</label>
+                            <input type="text" id="new-project-repo" placeholder="https://github.com/user/repo">
+                        </div>
+                        <div class="modal-actions">
+                            <button id="close-project-modal" class="secondary">Cancel</button>
+                            <button id="save-project-btn" class="primary">Initialize Project</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Modal -->
+                <div id="settings-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <h3>Configuration & Limits</h3>
+                        <div class="field">
+                            <label>Token Limit</label>
+                            <input type="number" id="cfg-tokens" value="100000">
+                        </div>
+                        <div class="field">
+                            <label>Max Retries</label>
+                            <input type="number" id="cfg-retries" value="3">
+                        </div>
+                        <div class="modal-actions">
+                             <button id="restart-tour-btn" class="secondary">Restart Tour</button>
+                             <button id="save-settings-btn" class="primary">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard View -->
+                <div id="dashboard-view" class="tab-content">
+                    <!-- Convergence State Panel -->
+                    <div class="convergence-panel" id="convergence-panel">
+                        <div class="conv-metric">
+                            <label>SYSTEM STATE</label>
+                            <h2 id="conv-state-label">AWAITING</h2>
+                        </div>
+                        <div class="conv-metric">
+                            <label>COVERAGE</label>
+                            <h2 id="conv-coverage">—%</h2>
+                        </div>
+                        <div class="conv-metric">
+                            <label>ITERATIONS</label>
+                            <h2 id="conv-iterations">—</h2>
+                        </div>
+                        <div class="conv-metric">
+                            <label>SELF-HEALS</label>
+                            <h2 id="conv-heals">—</h2>
+                        </div>
+                    </div>
+                    <!-- Legacy stats (kept for compatibility) -->
+                    <div class="stats-grid" style="margin-top:16px;">
+                        <div class="stat-card">
+                            <label>Status</label>
+                            <span id="exec-status">IDLE</span>
+                        </div>
+                        <div class="stat-card">
+                            <label>Tasks</label>
+                            <span id="exec-tasks">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <label>Failures</label>
+                            <span id="exec-failures">0</span>
+                        </div>
+                    </div>
+                    <div class="dag-container">
+                        <h3>Execution Graph (DAG)</h3>
+                        <div id="dag-viz">
+                            <div class="placeholder">Awaiting task initiation...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports View -->
+                <div id="reports-view" class="tab-content">
+                    <div id="report-list">
+                        <!-- Markdown reports rendered here -->
+                    </div>
+                </div>
+
+                <!-- Memory View -->
+                <div id="memory-view" class="tab-content">
+                    <div class="memory-grid">
+                        <div class="memory-card clickable" data-file="project_context">
+                            <h4>Project Context</h4>
+                            <p>Global goals and constraints.</p>
+                        </div>
+                        <div class="memory-card clickable" data-file="error_patterns">
+                            <h4>Error Patterns</h4>
+                            <p>Learned bugs and repair metrics.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Onboarding Overlay -->
+    <div id="tour-overlay" class="hidden">
+        <div id="tour-step-card">
+            <p id="tour-text"></p>
+            <div class="tour-controls">
+                <button id="skip-tour">Skip</button>
+                <button id="next-tour-btn">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>

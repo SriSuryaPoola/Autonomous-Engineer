@@ -1,0 +1,34 @@
+{
+  "failures": [
+    {
+      "task_id": "6ff422ac-ba5e-48d9-a448-4dd000011539",
+      "subrole": "UI",
+      "diagnosis": "Environment Issue",
+      "stdout": "py::TestClaudeFlow::test_full_pipeline PASSED     [ 11%]\ntests/test_claude_flow.py::TestClaudeFlow::test_phase_results_accessible PASSED [ 14%]\ntests/test_integration.py::TestIntegration::test_playwright_task_flow \n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nC:\\Python314\\Lib\\asyncio\\runners.py:132: KeyboardInterrupt\n(to show a full traceback on KeyboardInterrupt use --full-trace)\n======================= 5 passed in 5747.51s (1:35:47) ========================\n"
+    },
+    {
+      "task_id": "6ff422ac-ba5e-48d9-a448-4dd000011539",
+      "subrole": "UI",
+      "diagnosis": "Environment Issue",
+      "stdout": "_ui_3ff8a2.py::test_ui_stub PASSED                             [ 66%]\ntests/test_ui_50b6f9.py::test_ui_stub PASSED                             [ 68%]\ntests/test_ui_57d288.py::test_ui_stub PASSED                             [ 69%]\ntests/test_ui_5bda3b.py::test_ui_stub PASSED                             [ 71%]\ntests/test_ui_665cc9.py::test_ui_stub PASSED                             [ 72%]\ntests/test_ui_684634.py::test_ui_stub PASSED                             [ 73%]\ntests/test_ui_6ff422.py::test_"
+    },
+    {
+      "task_id": "6ff422ac-ba5e-48d9-a448-4dd000011539",
+      "subrole": "UI",
+      "diagnosis": "Environment Issue",
+      "stdout": "_ui_3ff8a2.py::test_ui_stub PASSED                             [ 65%]\ntests/test_ui_4f3592.py::test_ui_stub PASSED                             [ 67%]\ntests/test_ui_50b6f9.py::test_ui_stub PASSED                             [ 68%]\ntests/test_ui_57d288.py::test_ui_stub PASSED                             [ 70%]\ntests/test_ui_5bda3b.py::test_ui_stub PASSED                             [ 71%]\ntests/test_ui_665cc9.py::test_ui_stub PASSED                             [ 72%]\ntests/test_ui_684634.py::test_"
+    },
+    {
+      "task_id": "6ff422ac-ba5e-48d9-a448-4dd000011539",
+      "subrole": "UI",
+      "diagnosis": "Environment Issue",
+      "stdout": "_ui_3ae103.py::test_ui_stub PASSED                             [ 63%]\ntests/test_ui_3ff8a2.py::test_ui_stub PASSED                             [ 64%]\ntests/test_ui_4f3592.py::test_ui_stub PASSED                             [ 65%]\ntests/test_ui_50b6f9.py::test_ui_stub PASSED                             [ 67%]\ntests/test_ui_57d288.py::test_ui_stub PASSED                             [ 68%]\ntests/test_ui_5bda3b.py::test_ui_stub PASSED                             [ 69%]\ntests/test_ui_665cc9.py::test_"
+    },
+    {
+      "task_id": "794e9e0e-e163-4ef9-9210-501b9af6ca62",
+      "subrole": "UI",
+      "diagnosis": "Test Issue",
+      "stdout": ""
+    }
+  ]
+}
